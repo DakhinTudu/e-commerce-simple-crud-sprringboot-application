@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Product Management</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #eef2f7, #f9fafb);
+            padding: 40px;
+        }
+
+        h1,h4 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: auto;
+            background: #ffffff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+        }
+
+        h3 {
+            margin-top: 0;
+        }
+
+        .form-group {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        input {
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+
+        button {
+            padding: 10px 14px;
+            margin-top: 15px;
+            background: #007bff;
+            border: none;
+            color: #fff;
+            font-size: 14px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        table {
+            width: 100%;
+            margin-top: 25px;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            border: 1px solid #e0e0e0;
+            padding: 10px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        th {
+            background: #f3f4f6;
+        }
+
+        .actions button {
+            margin: 0 4px;
+            padding: 6px 10px;
+            font-size: 13px;
+        }
+
+        .actions button:last-child {
+            background: #dc3545;
+        }
+
+        .actions button:last-child:hover {
+            background: #b02a37;
+        }
+
+        #messageBox {
+    margin-bottom: 15px;
+    padding: 12px;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.success {
+    background: #e6fffa;
+    color: #065f46;
+    border: 1px solid #34d399;
+}
+
+.error {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #f87171;
+}
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>E-Commerce Product Management</h1>
+    <h4>Assessment</h4>
+
+    <!-- Product Form -->
+    <h3>Add / Update Product</h3>
+    <input type="hidden" id="productId" />
+
+    <div class="form-group">
+        <input type="text" id="productName" placeholder="Product Name" />
+        <input type="text" id="description" placeholder="Description" />
+        <input type="number" id="productPrice" placeholder="Price" />
+        <input type="number" id="quantity" placeholder="Quantity" />
+    </div>
+    <div id="messageBox" style="display:none;"></div>
+
+
+    <button onclick="saveProduct()">Save Product</button>
+
+    <!-- Products Table -->
+    <table>
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Description</th>
+            <th>Price</th>
+            <th>Qty</th>
+            <th>Actions</th>
+        </tr>
+        </thead>
+        <tbody id="productsTable"></tbody>
+    </table>
+</div>
+
+<script>
+    const API_BASE_URL = "/api/product";
+
+    document.addEventListener("DOMContentLoaded", loadProducts);
+
+    function loadProducts() {
+        fetch(API_BASE_URL)
+            .then(res => res.json())
+            .then(response => {
+                const products = response.data; // ApiResponse<List<Product>>
+
+                const table = document.getElementById("productsTable");
+                table.innerHTML = "";
+
+                products.forEach(product => {
+                    table.innerHTML += `
+                        <tr>
+                            <td>${product.productId}</td>
+                            <td>${product.productName}</td>
+                            <td>${product.description}</td>
+                            <td>${product.productPrice}</td>
+                            <td>${product.quantity}</td>
+                            <td class="actions">
+                                <button onclick='editProduct(${JSON.stringify(product)})'>Edit</button>
+                                <button onclick='deleteProduct(${product.productId})'>Delete</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            });
+    }
+
+    function saveProduct() {
+        const id = document.getElementById("productId").value;
+
+        const product = {
+            productName: document.getElementById("productName").value,
+            description: document.getElementById("description").value,
+            productPrice: document.getElementById("productPrice").value,
+            quantity: document.getElementById("quantity").value
+        };
+
+        const method = id ? "PUT" : "POST";
+        const url = id ? `${API_BASE_URL}/${id}` : API_BASE_URL;
+
+        fetch(url, {
+    method: method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(product)
+})
+.then(async res => {
+    const data = await res.json();
+
+    if (!res.ok) {
+        // validation errors
+        const errors = Object.values(data).join("<br>");
+        showMessage(errors, "error");
+        return;
+    }
+
+    showMessage(data.message, "success");
+    clearForm();
+    loadProducts();
+});
+
+    }
+
+    function editProduct(product) {
+        document.getElementById("productId").value = product.productId;
+        document.getElementById("productName").value = product.productName;
+        document.getElementById("description").value = product.description;
+        document.getElementById("productPrice").value = product.productPrice;
+        document.getElementById("quantity").value = product.quantity;
+    }
+
+   function deleteProduct(id) {
+    if (!confirm("Are you sure you want to delete this product?")) return;
+
+    fetch(`${API_BASE_URL}/${id}`, { method: "DELETE" })
+        .then(res => res.json())
+        .then(data => {
+            showMessage(data.message, "success");
+            loadProducts();
+        });
+}
+
+
+    function clearForm() {
+        document.getElementById("productId").value = "";
+        document.getElementById("productName").value = "";
+        document.getElementById("description").value = "";
+        document.getElementById("productPrice").value = "";
+        document.getElementById("quantity").value = "";
+    }
+
+
+    function showMessage(message, type) {
+    const box = document.getElementById("messageBox");
+    box.className = type;
+    box.innerHTML = message;
+    box.style.display = "block";
+
+    setTimeout(() => {
+        box.style.display = "none";
+    }, 3000);
+}
+
+</script>
+
+</body>
+</html>
